@@ -1,5 +1,7 @@
 # Feelings Learned from Consequences
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23740970.svg)](https://doi.org/10.5281/zenodo.23740970)
+
 Code for the paper *Feelings Learned from Consequences: A Somatic-Marker Core for Language-Instructed Drone Missions, and Where
 Language Models Do Not Help* (Mark Kolpakov, 2026). The paper source is in [`paper/latex`](paper/latex), the built PDFs are
 `paper/latex/main.pdf` (English) and `paper/latex/main_ru.pdf` (Russian).
@@ -24,8 +26,8 @@ classic reflex, or replace the feelings with raw telemetry. Language models are 
 | `docs/` | the plan of every stage with its hypotheses and thresholds written before the runs, the results log, the real-drone readiness notes, the video list (in Russian, `VIDEOS_EN.md` in English) |
 | `early_stages/` | code of the preliminary text-only study |
 
-Flight logs, mission plans and analysis outputs (`data.zip`), the trained models (`models.zip`) and the videos are archived
-separately; see the paper's section "Code, data and videos".
+Flight logs, mission plans and analysis outputs (`data.zip`), the trained models (`models.zip`) and the videos (`videos.zip`)
+are attached to [release v1.0](https://github.com/Clownnotinbox/feelings-from-consequences/releases/tag/v1.0).
 
 ## Running the app (Windows, NVIDIA GPU, Python 3.11)
 
