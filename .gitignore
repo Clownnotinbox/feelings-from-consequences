@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+models/
+runs/
+MUJOCO_LOG.TXT
+*.aux
+*.log
+*.out
+*.bbl
+*.blg

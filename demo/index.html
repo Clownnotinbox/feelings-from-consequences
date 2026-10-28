@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Дрон по описанию</title>
+<style>
+:root{--bg:#f3f4f6;--panel:#fff;--ink:#1d2330;--mute:#5f6878;--line:#d8dce3;--acc:#2f6fed;--pt:#0b7285;--warn:#c2410c;--ok:#2b8a3e;--soft:#eef1f6;--dark:#151a23}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font:14px/1.45 system-ui,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+header{height:52px;padding:0 16px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px}
+header h1{font-size:16px;margin:0}
+#place{color:var(--mute);font-size:13px}
+#realspeed{font-size:12.5px;color:var(--mute);min-width:150px;cursor:help}#realspeed.slow{color:var(--warn)}
+#phase{padding:2px 10px;border-radius:12px;background:var(--soft);font-size:13px}
+#phase.fly{background:#e3ecfd;color:#1c4fb8}#phase.done{background:#e6f4ea;color:var(--ok)}
+.grow{flex:1}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--panel)}
+.seg button{border:0;border-right:1px solid var(--line);background:transparent;color:var(--ink);padding:5px 11px;border-radius:0}
+.seg button:last-child{border-right:0}.seg button.on{background:var(--ink);color:#fff}
+.speed{display:flex;align-items:center;gap:8px;color:var(--mute);font-size:13px}
+#langseg button{padding:5px 9px;font-size:12.5px}
+button{font:inherit;padding:7px 14px;border:1px solid transparent;border-radius:7px;background:var(--acc);color:#fff;cursor:pointer}
+button.sec{background:var(--soft);color:var(--ink);border-color:var(--line)}
+button.link{background:none;border:0;color:var(--acc);padding:2px 4px}
+button.danger{background:#fff;color:var(--warn);border-color:#f1c3ad}
+button:disabled{opacity:.5;cursor:default}
+button.big{padding:10px 22px;font-weight:600;font-size:15px}
+main{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:12px;padding:12px;height:calc(100vh - 52px)}
+#stage{position:relative;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel);min-height:0}
+.view{position:absolute;inset:0}
+#map{width:100%;height:100%;display:block;cursor:crosshair;background:#e8eddf;touch-action:none}
+#pane3d{background:var(--dark);display:none}
+#v3d{width:100%;height:100%;object-fit:cover;display:block;cursor:grab;user-select:none}
+#v3d.drag{cursor:grabbing}
+#v3msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#c9cfdb;padding:20px;text-align:center}
+/* in flight: big 3D view, the map in a corner (or the other way round) */
+.fly #pane3d{display:block}
+.fly #mapbox{inset:auto auto 12px 12px;width:min(34%,420px);height:min(42%,340px);border:1px solid var(--line);border-radius:8px;overflow:hidden;z-index:2;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+.fly.mapbig #mapbox{inset:0;width:auto;height:auto;border:0;border-radius:0;box-shadow:none;z-index:1}
+.fly.mapbig #pane3d{inset:auto auto 12px 12px;width:min(34%,440px);height:min(40%,250px);border-radius:8px;overflow:hidden;z-index:2;box-shadow:0 2px 10px rgba(0,0,0,.35)}
+.over{position:absolute;font-size:12px;background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:7px;padding:5px 8px;z-index:3}
+#mapbar{right:10px;top:10px;display:flex;gap:4px;align-items:center;padding:3px}
+#mapbar button{padding:3px 9px;font-size:13px}
+.fly:not(.mapbig) #mapbox .hint,.fly:not(.mapbig) #mapbar .wide{display:none}
+#follow-l{display:none;color:var(--mute);padding:0 4px}.fly #follow-l{display:inline}
+.hint{left:10px;bottom:10px;color:var(--mute)}
+#pane3d .hint{bottom:auto;top:10px}
+#modes{right:10px;top:10px;padding:3px;display:flex;gap:3px}
+#modes button{padding:3px 9px;font-size:12px}
+.fly.mapbig #pane3d #modes,.fly.mapbig #pane3d .hint{display:none}
+#swap{position:absolute;right:10px;bottom:10px;z-index:4;font-size:13px;padding:5px 10px;display:none}
+.fly #swap{display:block}
+#tip{position:absolute;pointer-events:none;background:var(--ink);color:#fff;padding:5px 8px;border-radius:5px;font-size:12px;display:none;max-width:280px;z-index:6}
+#result{position:absolute;inset:0;background:rgba(21,26,35,.55);display:none;align-items:center;justify-content:center;z-index:8}
+#result .card{max-width:560px;width:calc(100% - 40px)}
+#result h2{margin:0 0 4px;font-size:18px}
+#result ul{margin:10px 0 14px;padding-left:18px}#result li{margin:3px 0}
+aside{overflow:auto;display:flex;flex-direction:column;gap:10px;min-height:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.card h3{margin:0 0 8px;font-size:13px;color:var(--mute);font-weight:600}
+.note{font-size:12.5px;color:var(--mute)}
+/* the three steps of a task: one open at a time */
+.step{border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.step+.step{margin-top:8px}
+.sh{width:100%;display:grid;grid-template-columns:26px 1fr;gap:2px 10px;align-items:center;background:none;color:var(--ink);text-align:left;padding:11px 12px;border:0}
+.num{width:26px;height:26px;border-radius:50%;background:var(--soft);color:var(--mute);font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;grid-row:span 2}
+.step.open .num{background:var(--ink);color:#fff}.step.done .num{background:#e6f4ea;color:var(--ok)}
+.st{font-weight:600;font-size:14.5px}
+.sum{font-size:12.5px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.step.open .sum{display:none}
+.sb{display:none;padding:0 14px 14px 48px}
+.step.open .sb{display:block}
+.sb h5{margin:12px 0 6px;font-size:12px;color:var(--mute);font-weight:600}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.next{margin-top:12px}
+textarea{width:100%;min-height:76px;font:inherit;padding:8px;border:1px solid var(--line);border-radius:7px;resize:vertical}
+#kinds{display:flex;flex-wrap:wrap;gap:5px}
+.kind{display:flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:14px;padding:2px 9px 2px 5px;font-size:12.5px;background:#fff;color:var(--ink);cursor:pointer}
+.kind:hover{border-color:var(--acc)}.kind.on{background:#e3ecfd;border-color:var(--acc)}
+.kind small{color:var(--mute)}
+#legbody .li{display:flex;align-items:center;gap:7px;font-size:12.5px;padding:2px 0}
+#exlist{display:flex;flex-direction:column;gap:5px;margin-top:6px}
+.ex{border:1px solid var(--line);border-radius:7px;padding:6px 8px;font-size:13px;background:#fff;text-align:left;color:var(--ink)}
+.ex:hover{border-color:var(--acc)}
+.tag{display:inline-block;font-size:11px;padding:0 6px;border-radius:9px;background:var(--soft);color:var(--mute);margin-right:5px}
+#pv{margin-top:10px;border-left:3px solid var(--acc);padding:4px 0 4px 10px}
+#pvs{font-size:13px;margin:4px 0;padding-left:0;list-style:none}#pvs li{margin:3px 0}
+#pj{min-height:110px;font:11px/1.3 ui-monospace,Consolas,monospace}
+.presets{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.preset{border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:#fff;color:var(--ink);text-align:left;font-size:12.5px;line-height:1.3}
+.preset b{display:block;font-size:13.5px;margin-bottom:2px}
+.preset span{color:var(--mute)}
+.preset:hover{border-color:var(--acc)}.preset.on{border-color:var(--acc);background:#eef3fe;box-shadow:inset 0 0 0 1px var(--acc)}
+.grid2{display:grid;grid-template-columns:auto 1fr;gap:7px 8px;align-items:center;margin-top:8px}
+.grid2 label{color:var(--mute);font-size:13px}
+select,input[type=number]{font:inherit;padding:3px 5px;border:1px solid var(--line);border-radius:5px;background:#fff}
+input[type=number]{width:64px}
+details>summary{cursor:pointer}
+.gofoot{position:sticky;bottom:0;background:var(--bg);padding:6px 0 2px}
+.gofoot .card{display:flex;flex-direction:column;gap:8px}
+#go{width:100%}
+.msg{font-size:13px;min-height:1em}.err{color:var(--warn)}.okk{color:var(--ok)}
+/* flight panel */
+#flypanel{display:none;flex-direction:column;gap:10px}
+.fly #planpanel{display:none}.fly #flypanel{display:flex}
+#nowphase{font-size:20px;font-weight:600;margin:2px 0 4px}
+#nowtext{font-size:13px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:7px 8px}
+.tile span{display:block;font-size:11.5px;color:var(--mute)}
+.tile b{font-size:15px;font-variant-numeric:tabular-nums}
+.tile.bad b{color:var(--warn)}
+.feel{display:grid;grid-template-columns:1fr 92px 38px;gap:6px 8px;align-items:center;font-size:12.5px}
+.feel .nm{border-bottom:1px dotted #aab;justify-self:start;cursor:help}
+.bar{height:8px;background:var(--soft);border-radius:4px;overflow:hidden}.bar i{display:block;height:100%;background:var(--acc);transition:width .25s}.bar.hot i{background:var(--warn)}
+.feel .v{text-align:right;font-variant-numeric:tabular-nums}
+#feelall{margin-top:8px}
+#events{font-size:13px;line-height:1.4;max-height:190px;overflow:auto}
+#events div{padding:2px 0;border-bottom:1px solid #f0f1f4}
+#events b{font-weight:500;color:var(--mute);font-variant-numeric:tabular-nums;margin-right:6px}
+#log{font:11.5px/1.35 ui-monospace,Consolas,monospace;max-height:220px;overflow:auto;white-space:pre-wrap;color:#333;margin:6px 0 0}
+#camcard summary{list-style:none}#camcard summary h3{display:inline;margin:0}
+#cam{width:100%;border-radius:6px;background:#000;display:none;margin-top:8px}
+#camnone{margin-top:8px}
+#q{position:fixed;inset:0;background:rgba(20,24,32,.55);display:none;align-items:center;justify-content:center;z-index:10}
+#q .box{background:#fff;border-radius:12px;padding:18px;max-width:1100px}
+#q .cands{display:flex;gap:12px;margin:12px 0;flex-wrap:wrap}#q .cands div{text-align:center;font-size:13px}
+#q img{width:300px;border-radius:7px;border:3px solid #fff;cursor:pointer}#q img:hover{border-color:var(--acc)}
+@media (max-width:1050px){main{grid-template-columns:1fr;height:auto}#stage{height:62vh}}
+</style></head>
+<body>
+<header><h1 data-t="title">Дрон по описанию</h1><span id="place"></span><span id="phase">ожидает задания</span><span class="grow"></span>
+  <div class="speed"><span data-t="speed">Скорость показа</span><div class="seg" id="speedseg"><button data-s="1" class="on">×1</button><button data-s="2">×2</button><button data-s="4">×4</button></div><span id="realspeed" data-tt="speedtip" title="Симулятор считает физику, лидары и ядро чувств на каждом шаге. Если компьютер не успевает, полёт идёт медленнее выбранного, но не теряет точности."></span></div>
+  <button class="danger" id="stop" style="display:none" data-t="stop">Остановить полёт</button>
+  <div class="seg" id="langseg" title="Язык / Language"><button data-l="ru">RU</button><button data-l="en">EN</button></div></header>
+<main id="app" class="plan">
+<section id="stage">
+  <div class="view" id="mapbox">
+    <svg id="map"><g id="world"></g><g id="objs"></g><g id="dyn"></g></svg>
+    <div id="tip"></div>
+    <div id="mapbar" class="over"><label id="follow-l"><input type="checkbox" id="follow" checked> <span data-t="follow">за дроном</span></label><button class="sec" id="zin" title="ближе">+</button><button class="sec" id="zout" title="дальше">−</button><button class="sec wide" id="fit" data-t="fit">весь район</button></div>
+    <div class="over hint" data-t="maphint">Щелчок: примерная точка цели · колесо: масштаб · перетаскивание: сдвиг</div>
+  </div>
+  <div class="view" id="pane3d">
+    <img id="v3d" alt="3D-вид" draggable="false">
+    <div id="v3msg" data-t="v3load">3D-вид загружается…</div>
+    <div id="modes" class="over seg"><button data-m="chase" class="on" data-t="chase">За дроном</button><button data-m="top" data-t="top">Сверху</button><button data-m="free" data-t="free">Свободно</button></div>
+    <div class="over hint" data-t="hint3d">Тяните мышью, чтобы повернуть · колесо: ближе или дальше</div>
+  </div>
+  <button class="sec" id="swap" data-t="swap">Карта крупно</button>
+  <div id="result"><div class="card"><h2 data-t="restitle">Итог полёта</h2><div class="note" data-t="resnote">Это говорит мир симулятора, а не сам дрон. Сравните с заданием.</div>
+    <ul id="resl"></ul><div class="row"><button class="sec" id="again" data-t="again">Повторить то же задание</button><button id="newtask" data-t="newtask">Новое задание</button></div></div></div>
+</section>
+<aside>
+<div id="planpanel">
+  <div class="step open" id="s1"><button class="sh" data-open="s1"><span class="num">1</span><span class="st" data-t="s1t">Где цель</span><span class="sum" id="sum1">щёлкните на карте рядом с целью</span></button>
+    <div class="sb">
+      <div class="note" data-t="s1note">Найдите цель на карте и щёлкните рядом с ней. Точно попадать не нужно, ошибка в десятки метров допустима. Для задания из двух шагов поставьте две точки по порядку.</div>
+      <div class="row"><b id="ptinfo">Точек нет</b><button class="link" id="undo" data-t="undo">убрать последнюю</button><button class="link" id="clr" data-t="clr">очистить</button></div>
+      <h5 data-t="kindsh">Что есть на карте (нажмите, чтобы показать)</h5><div id="kinds"></div>
+      <details style="margin-top:8px"><summary class="note" data-t="legend">Условные обозначения</summary><div id="legbody"></div></details>
+      <button class="next" data-open="s2" data-t="next">Дальше</button>
+    </div></div>
+  <div class="step" id="s2"><button class="sh" data-open="s2"><span class="num">2</span><span class="st" data-t="s2t">Что сделать</span><span class="sum" id="sum2">напишите задание</span></button>
+    <div class="sb">
+      <textarea id="text" data-tp="textph" placeholder="Своими словами: что сделать и как выглядит цель. Например: сядь на синюю площадку с буквой H рядом с девятиэтажкой, потом вернись домой."></textarea>
+      <details id="exbox"><summary class="note" data-t="exsum">Готовые примеры для этой карты</summary>
+        <div id="exlist"></div><div class="row"><button class="link" id="exmore" data-t="exmore">другие примеры</button><button class="link" id="showtgt" disabled data-t="showtgt">показать цель примера</button></div></details>
+      <div class="row"><button class="sec" id="prs" data-t="prs">Проверить, как понял дрон</button></div>
+      <div id="pv" style="display:none"><div class="note" data-t="pvnote">Дрон понял так:</div><ul id="pvs"></ul>
+        <details><summary class="note" data-t="pjsum">исправить разбор вручную (JSON, для опытных)</summary><textarea id="pj"></textarea></details></div>
+      <button class="next" data-open="s3" data-t="next">Дальше</button>
+    </div></div>
+  <div class="step" id="s3"><button class="sh" data-open="s3"><span class="num">3</span><span class="st" data-t="s3t">Условия полёта</span><span class="sum" id="sum3">обычный полёт</span></button>
+    <div class="sb">
+      <div class="presets" id="presets"></div>
+      <details id="condbox" style="margin-top:10px"><summary class="note" data-t="manual">Настроить вручную</summary>
+        <div class="grid2">
+          <label for="wind" data-t="wind">Ветер</label><span><input id="wind" type="number" min="0" max="14" value="3"> <span data-t="ms_gusts">м/с, порывы</span> <select id="gust"><option value="none" data-t="o_none">нет</option><option value="weak" selected data-t="o_weak">слабые</option><option value="strong" data-t="o_strong">сильные</option></select></span>
+          <label for="fog" data-t="fog">Туман</label><select id="fog"><option value="none" data-t="o_none">нет</option><option value="light" data-t="o_fogl">лёгкий, видно на 250 м</option><option value="dense" data-t="o_fogd">густой, видно на 80 м</option></select>
+          <label for="gps">GPS</label><span><select id="gps"><option value="ok" data-t="o_gpsok">работает</option><option value="off" data-t="o_gpsoff">пропадёт</option><option value="drift" data-t="o_gpsdrift">начнёт врать (подмена)</option><option value="degraded" data-t="o_gpsdeg">станет неточным</option></select> <span data-t="after">через</span> <input id="gpst" type="number" min="0" value="20"> <span data-t="sec">с</span></span>
+          <label for="lidar" data-t="lidar">Лидар</label><span><select id="lidar"><option value="ok" data-t="o_lidok">исправен</option><option value="sector" data-t="o_lidsec">грязь на стекле: слепой сектор</option><option value="range" data-t="o_lidrange">дождь: дальность втрое меньше</option><option value="spurious" data-t="o_lidspur">помехи: ложные точки</option></select> <span data-t="after">через</span> <input id="lidart" type="number" min="0" value="0"> <span data-t="sec">с</span></span>
+          <label for="compass" data-t="compass">Компас</label><select id="compass"><option value="" data-t="o_lidok">исправен</option><option value="1" data-t="o_comp">врёт на 20°</option></select>
+          <label for="link" data-t="link">Связь с вами</label><span><select id="link"><option value="ok" data-t="o_linkok">есть всё время</option><option value="lost" data-t="o_gpsoff">пропадёт</option></select> <span data-t="after">через</span> <input id="linkt" type="number" min="0" value="45"> <span data-t="sec">с</span></span>
+          <label for="battery" data-t="battery">Батарея</label><span><input id="battery" type="number" min="15" max="100" value="100"> <span data-t="pct_takeoff">% при взлёте,</span> <label><input type="checkbox" id="cold"> <span data-t="cold">холодная</span></label></span>
+          <label for="att" data-t="birds">Птицы</label><label><input type="checkbox" id="att"> <span data-t="attack">атакуют дрон</span></label>
+          <label for="ret" data-t="ret">Возврат домой</label><select id="ret"><option value="" data-t="o_rettext">как в тексте (если не сказано, да)</option><option value="1" data-t="o_yes">да</option><option value="0" data-t="o_no">нет</option></select>
+        </div>
+        <div class="note" style="margin-top:6px" data-t="condnote">Без связи дрон не может задать вопрос и не трогает цель, если не уверен. При подмене GPS приёмник выглядит исправным, дрон должен заметить сам.</div>
+      </details>
+    </div></div>
+  <div class="gofoot"><div class="card"><div id="msg" class="msg"></div><button id="go" class="big" data-t="go">Лететь</button></div></div>
+</div>
+<div id="flypanel">
+  <div class="card"><h3 data-t="now">Сейчас</h3><div id="nowphase">—</div><div id="nowtext" class="note"></div><div id="conds" class="note" style="margin-top:4px"></div></div>
+  <div class="tiles"><div class="tile"><span data-t="alt">высота</span><b id="t_alt">—</b></div><div class="tile"><span data-t="spd">скорость</span><b id="t_spd">—</b></div><div class="tile" id="t_batc"><span data-t="bat">батарея</span><b id="t_bat">—</b></div><div class="tile" id="t_gpsc"><span>GPS</span><b id="t_gps">—</b></div></div>
+  <div class="card"><h3 data-t="feelh">Чувства ядра</h3><div class="note" style="margin:-4px 0 8px" data-t="feelnote">Вероятность последствия, которого дрон ещё не видит. Ядро выучило их на последствиях, ни одно не задано вручную.</div>
+    <div class="feel" id="feel"></div>
+    <details><summary class="note" style="margin-top:8px" data-t="feelall">все семь чувств и перехваты</summary><div class="feel" id="feelall"></div><div class="note" id="fires" style="margin-top:6px"></div></details></div>
+  <div class="card"><h3 data-t="evh">Что делает дрон</h3><div id="events"><span class="note" data-t="nothing">пока ничего</span></div>
+    <details><summary class="note" style="margin-top:6px" data-t="logsum">подробный журнал (частично на английском)</summary><pre id="log"></pre></details></div>
+  <details class="card" id="camcard" open><summary><h3 data-t="camh">Камера дрона</h3> <span class="note" data-t="camnote">что видит распознавание</span></summary><img id="cam" alt=""><div id="camnone" class="note" data-t="camnone">камера ещё не смотрела на цель</div></details>
+</div>
+</aside>
+</main>
+<div id="q"><div class="box"><b id="qtext"></b><div class="cands" id="qc"></div><button class="sec" id="none" data-t="none">Ни один из них</button></div></div>
+<script>
+const $=id=>document.getElementById(id);
+
+// ---------------- language: Russian by default, English with ?lang=en (remembered by the browser)
+const LANG=(()=>{const q=new URLSearchParams(location.search).get('lang');if(q==='en'||q==='ru'){try{localStorage.setItem('lang',q)}catch(e){}return q}
+  try{return localStorage.getItem('lang')==='en'?'en':'ru'}catch(e){return 'ru'}})();
+const EN=LANG==='en';
+const t=(ru,en)=>EN?en:ru;
+const TXT={title:'Drone by description',speed:'Playback speed',stop:'Stop the flight',follow:'follow the drone',fit:'whole area',
+  maphint:'Click: rough point of the target · wheel: zoom · drag: pan',v3load:'Loading the 3D view…',chase:'Behind',top:'Top',free:'Free',
+  hint3d:'Drag to turn · wheel: closer or farther',restitle:'Flight outcome',resnote:'This is what the simulated world says, not the drone. Compare it with the request.',
+  again:'Repeat the same mission',newtask:'New mission',s1t:'Where is the target',s1note:'Find the target on the map and click near it. You do not need to hit it: tens of metres off is fine. For a two-step mission put two points in order.',
+  undo:'remove the last',clr:'clear',kindsh:'What is on the map (click to show)',legend:'Map legend',next:'Next',s2t:'What to do',
+  textph:'In your own words: what to do and what the target looks like. For example: land on the blue pad with the letter H next to the nine-storey block, then return home.',
+  exsum:'Ready examples for this map',exmore:'other examples',showtgt:'show the example target',prs:'Check what the drone understood',pvnote:'The drone understood:',
+  pjsum:'correct the parse by hand (JSON, for experts)',s3t:'Flight conditions',manual:'Set by hand',wind:'Wind',ms_gusts:'m/s, gusts',o_none:'none',o_weak:'weak',o_strong:'strong',
+  fog:'Fog',o_fogl:'light, visibility 250 m',o_fogd:'dense, visibility 80 m',o_gpsok:'works',o_gpsoff:'will be lost',o_gpsdrift:'will lie (spoofing)',o_gpsdeg:'will degrade',
+  after:'after',sec:'s',lidar:'Lidar',o_lidok:'works',o_lidsec:'dirt on the window: blind sector',o_lidrange:'rain: one third of the range',o_lidspur:'interference: false points',
+  compass:'Compass',o_comp:'off by 20°',link:'Link to you',o_linkok:'all the time',battery:'Battery',pct_takeoff:'% at take-off,',cold:'cold',birds:'Birds',attack:'attack the drone',
+  ret:'Return home',o_rettext:'as in the text (if not said, yes)',o_yes:'yes',o_no:'no',
+  condnote:'Without a link the drone cannot ask you and does not touch a target it is unsure of. A spoofed GPS looks healthy: the drone has to notice it itself.',
+  go:'Fly',now:'Now',alt:'altitude',spd:'speed',bat:'battery',feelh:'Core feelings',feelnote:'The probability of a consequence the drone cannot see yet. The core learned them from consequences; none is set by hand.',
+  feelall:'all seven feelings and overrides',evh:'What the drone does',nothing:'nothing yet',logsum:'detailed log',camh:'Drone camera',camnote:'what the detector sees',
+  camnone:'the camera has not looked at the target yet',swap:'Large map',none:'None of these',speedtip:'The simulator computes physics, lidars and the feeling core at every step. If the computer cannot keep up, the flight runs slower than chosen, but stays exact.'};
+function applyLang(){document.documentElement.lang=LANG;if(!EN)return;document.title=TXT.title;
+  for(const e of document.querySelectorAll('[data-t]'))if(TXT[e.dataset.t])e.textContent=TXT[e.dataset.t];
+  for(const e of document.querySelectorAll('[data-tp]'))e.placeholder=TXT[e.dataset.tp];
+  for(const e of document.querySelectorAll('[data-tt]'))e.title=TXT[e.dataset.tt];
+  $('zin').title='closer';$('zout').title='farther';$('v3d').alt='3D view'}
+const NS='http://www.w3.org/2000/svg';
+const COL={red:'#d63b2f',orange:'#f08a24',yellow:'#e9c21b',green:'#2f8f3e',blue:'#2b55c9',white:'#f4f4f2',grey:'#8a8f96',black:'#222',purple:'#7d3fa5',brown:'#7a5233'};
+const LIGHT=new Set(['white','yellow','grey','orange']);
+const KIND=EN?{pad:'landing pad',dropzone:'drop zone',pickup:'pickup station',hangar:'hangar',water_tower:'water tower',mast:'cell tower',tent:'tent',container:'container',solar:'solar panels',windsock:'windsock'}:{pad:'посадочная площадка',dropzone:'зона сброса',pickup:'пункт выдачи',hangar:'ангар',water_tower:'водонапорная башня',mast:'вышка связи',tent:'палатка',container:'контейнер',solar:'солнечные панели',windsock:'ветроуказатель'};
+const PHASE=EN?{idle:'waiting for a mission',takeoff:'taking off',transit:'flying to the point',search:'searching for the target',closer:'moving closer',verify:'checking up close',approach:'approaching the target',descend:'descending',final:'landing',hover_pick:'hovering over the parcel',hook:'hooking the parcel',drop_hold:'dropping the parcel',find_door:'looking for the door',enter_in:'flying into the hangar',exit_out:'leaving the hangar',orbit:'circling the target',pass:'flying past',reposition:'repositioning',relocalize:'finding where it is',return:'returning home',landed:'landed',done:'flight over'}:{idle:'ожидает задания',takeoff:'взлетает',transit:'летит к точке',search:'ищет цель',closer:'подлетает ближе',verify:'проверяет вблизи',approach:'заходит на цель',descend:'снижается',final:'садится',hover_pick:'зависает над посылкой',hook:'цепляет посылку',drop_hold:'сбрасывает груз',find_door:'ищет ворота',enter_in:'влетает в ангар',exit_out:'вылетает из ангара',orbit:'облетает цель',pass:'пролетает мимо',reposition:'перестраивается',relocalize:'уточняет, где он',return:'возвращается домой',landed:'сел',done:'полёт закончен'};
+const FEEL=EN?{danger_05:['danger in 0.5 s','probability of a contact in half a second if it keeps flying as now'],danger_1:['danger in 1 s','the same in one second'],danger_2:['danger in 2 s','the same in two seconds'],gps_bad:['distrusts GPS','GPS error above 5 m'],lost:['unsure where it is','own position error above 10 m'],low_energy:['may run out of charge','for the mission and the way home'],strain:['motors at the limit','motors at the limit or a steep tilt in the next 2 s']}:{danger_05:['опасность через 0,5 с','вероятность касания через полсекунды, если лететь как сейчас'],danger_1:['опасность через 1 с','то же через секунду'],danger_2:['опасность через 2 с','то же через две секунды'],gps_bad:['не доверяет GPS','ошибка GPS больше 5 м'],lost:['не уверен, где он','ошибка своего места больше 10 м'],low_energy:['может не хватить заряда','на задание и дорогу домой'],strain:['моторы на пределе','моторы на пределе или сильный крен в ближайшие 2 с']};
+const FG=[[t('опасность столкновения','danger of a collision'),['danger_05','danger_1','danger_2'],t('наибольшая из трёх: касание через 0,5, 1 или 2 с, если лететь как сейчас','the largest of three: a contact in 0.5, 1 or 2 s if it keeps flying as now')],[FEEL.lost[0],['lost'],FEEL.lost[1]],[FEEL.gps_bad[0],['gps_bad'],FEEL.gps_bad[1]],[FEEL.low_energy[0],['low_energy'],FEEL.low_energy[1]],[FEEL.strain[0],['strain'],FEEL.strain[1]]];
+const GPS={ok:'работает',off:'нет сигнала',drift:'подменён',degraded:'неточный'};
+const PRESETS=[
+  {id:'calm',name:t('Обычный полёт','Normal flight'),about:t('ветер 3 м/с, всё исправно','wind 3 m/s, all sensors fine'),set:{}},
+  {id:'nogps',name:t('Пропадёт GPS','GPS will be lost'),about:t('через 20 с, дальше по лидару и карте','after 20 s; then lidar and map'),set:{gps:'off',gpst:20}},
+  {id:'spoof',name:t('Подмена GPS','GPS spoofing'),about:t('через 20 с приёмник начнёт врать','after 20 s the receiver starts to lie'),set:{gps:'drift',gpst:20}},
+  {id:'storm',name:t('Ветер и птицы','Wind and birds'),about:t('8 м/с, сильные порывы, атаки птиц','8 m/s, strong gusts, bird attacks'),set:{wind:8,gust:'strong',att:true}},
+  {id:'fog',name:t('Туман и дождь','Fog and rain'),about:t('видно на 80 м, лидар видит втрое ближе','visibility 80 m, lidar range one third'),set:{fog:'dense',lidar:'range',lidart:0}},
+  {id:'battery',name:t('Слабая батарея','Weak battery'),about:t('40 % при взлёте, холодная','40 % at take-off, cold'),set:{battery:40,cold:true}}];
+const DEF={wind:3,gust:'weak',fog:'none',gps:'ok',gpst:20,lidar:'ok',lidart:0,compass:'',link:'ok',linkt:45,battery:100,cold:false,att:false,ret:''};
+let M=null,pts=[],vb=null,kindOn=null,exTargets=[],lastQ=null,mode='plan',parsedOk=false,logN=0,logs=[],lastEv='',seen={},trailN=0,lastTrail=null,done=false,lastReq=null;
+
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);(parent||$('world')).appendChild(e);return e}
+const P=p=>`${p[0]},${-p[1]}`;
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+function setText(id,v){const e=$(id);if(e&&e.textContent!==v)e.textContent=v}
+function setHTML(id,v){if(seen[id]!==v){seen[id]=v;$(id).innerHTML=v}}
+
+// the map symbol of an object: shape = kind, fill = its real colour
+function symbol(kind,colour,g){
+  const c=COL[colour]||'#7d8592', gl=LIGHT.has(colour)?'#1d2330':'#fff', s={stroke:'#1d2330','stroke-width':.12};
+  const a=(t,x)=>el(t,Object.assign({},x),g);
+  if(kind==='pad'){a('circle',{r:1,fill:c,...s});a('text',{y:.42,'font-size':1.15,'font-weight':700,'text-anchor':'middle',fill:gl}).textContent='H'}
+  else if(kind==='dropzone'){a('circle',{r:1,fill:c,...s});a('path',{d:'M-.55,-.55L.55,.55M-.55,.55L.55,-.55',stroke:gl,'stroke-width':.22})}
+  else if(kind==='pickup'){a('rect',{x:-.9,y:-.9,width:1.8,height:1.8,rx:.25,fill:c,...s});a('rect',{x:-.38,y:-.38,width:.76,height:.76,fill:gl})}
+  else if(kind==='hangar'){a('path',{d:'M-1,.85V-.15Q0,-1.25 1,-.15V.85Z',fill:c,...s});a('path',{d:'M-.45,.85H.45',stroke:gl,'stroke-width':.3})}
+  else if(kind==='water_tower'){a('circle',{r:1,fill:c,...s});a('circle',{r:.42,fill:gl})}
+  else if(kind==='mast'){a('path',{d:'M0,-1.1L.75,1H-.75Z',fill:c,...s});a('path',{d:'M0,-.6V.9',stroke:gl,'stroke-width':.15})}
+  else if(kind==='tent'){a('path',{d:'M-1,.8L0,-.9L1,.8Z',fill:c,...s})}
+  else if(kind==='container'){a('rect',{x:-1,y:-.5,width:2,height:1,fill:c,...s});a('path',{d:'M-.33,-.5V.5M.33,-.5V.5',stroke:gl,'stroke-width':.12})}
+  else if(kind==='solar'){a('rect',{x:-1,y:-.6,width:2,height:1.2,fill:c,...s});a('path',{d:'M-.33,-.6V.6M.33,-.6V.6M-1,0H1',stroke:gl,'stroke-width':.1})}
+  else if(kind==='windsock'){a('path',{d:'M-.8,-.9V1',stroke:'#1d2330','stroke-width':.15});a('path',{d:'M-.8,-.9L1,-.55L-.8,-.2Z',fill:c,...s})}
+  else a('circle',{r:1,fill:c,...s});
+}
+function icon(draw,size){const s=document.createElementNS(NS,'svg');s.setAttribute('width',size||18);s.setAttribute('height',size||18);s.setAttribute('viewBox','-1.3 -1.3 2.6 2.6');const g=document.createElementNS(NS,'g');s.appendChild(g);draw(g);return s}
+
+async function init(){
+  applyLang();for(const b of $('langseg').children)b.classList.toggle('on',b.dataset.l===LANG);
+  M=await (await fetch('/api/map')).json();
+  $('place').textContent=(EN?{kazan_novosav:'Kazan, Novo-Savinovsky district',tokyo_res:'Tokyo, residential district'}:{kazan_novosav:'Казань, Ново-Савиновский район',tokyo_res:'Токио, жилой квартал'})[M.place]||M.place;$('place').textContent+=t(' · расстановка ',' · layout ')+M.seed;
+  const h=M.half; vb=[-h,-h,2*h,2*h]; setVB();
+  el('rect',{x:-h,y:-h,width:2*h,height:2*h,fill:'#e8eddf'});
+  for(const w of M.water) el('polygon',{points:w.map(P).join(' '),fill:'#9cc3e6'});
+  for(const r of M.roads) el('polyline',{points:r.map(P).join(' '),fill:'none',stroke:'#fff','stroke-width':5,'stroke-linecap':'round'});
+  for(const t of M.trees) el('circle',{cx:t[0],cy:-t[1],r:1.6,fill:'#7aa86b'});
+  M.buildings.forEach((b,i)=>{const g=el('polygon',{points:b.map(P).join(' '),fill:'#b9bcc4',stroke:'#8d919b','stroke-width':.4});tipOn(g,t(`дом, высота около ${Math.round(M.heights[i])} м`,`building, about ${Math.round(M.heights[i])} m tall`))});
+  const hm=el('g',{transform:`translate(${M.home[0]},${-M.home[1]})`});el('circle',{r:4,fill:'#fff',stroke:'#1d2330','stroke-width':1.2},hm);el('circle',{r:1.4,fill:'#1d2330'},hm);
+  el('text',{x:6,y:-5,'font-size':8,fill:'#1d2330','font-weight':600},hm).textContent=t('старт','start');tipOn(hm,t('старт и дом дрона','the drone\'s start and home'));
+  for(const o of M.objects){
+    const s=Math.max(2.6,o.r*.9);
+    const rot=['hangar','container','solar'].includes(o.kind)?` rotate(${(-o.yaw*180/Math.PI).toFixed(1)})`:'';
+    const g=el('g',{class:'obj','data-kind':o.kind,'data-id':o.id,transform:`translate(${o.x},${-o.y}) scale(${s})${rot}`},$('objs'));
+    symbol(o.kind,o.colour,g);
+    if(o.roof) el('circle',{r:1.45,fill:'none',stroke:'#1d2330','stroke-width':.1,'stroke-dasharray':'.25 .2'},g);
+    const ab=EN?o.about_en:o.about;tipOn(g,`<b>${esc(EN?(o.colour?o.colour+' ':'')+o.en:(o.colour_ru?o.colour_ru+' ':'')+o.ru)}</b>${ab.length?'<br>'+ab.map(esc).join('<br>'):''}`);
+  }
+  // the drone's path and the drone itself: made once, moved later
+  const d=$('dyn');
+  window.trEst=el('polyline',{points:'',fill:'none',stroke:'#2f6fed','stroke-width':.9,'stroke-dasharray':'2 2',opacity:.7},d);
+  window.trTrue=el('polyline',{points:'',fill:'none',stroke:'#2f6fed','stroke-width':1.4},d);
+  window.drone=el('g',{style:'display:none'},d);el('path',{d:'M0,0L8,0',stroke:'#2f6fed','stroke-width':1.5},drone);el('circle',{r:3.2,fill:'#2f6fed',stroke:'#fff','stroke-width':1},drone);
+  buildKinds();buildLegend();buildPresets();loadExamples();drawPts();onText();
+  poll();frameLoop();
+}
+function setVB(){$('map').setAttribute('viewBox',vb.join(' '))}
+function tipOn(g,html){g.addEventListener('mousemove',e=>{const t=$('tip');t.innerHTML=html;t.style.display='block';const r=$('mapbox').getBoundingClientRect();t.style.left=Math.min(e.clientX-r.left+12,r.width-290)+'px';t.style.top=(e.clientY-r.top+12)+'px'});g.addEventListener('mouseleave',()=>$('tip').style.display='none')}
+
+function buildKinds(){
+  const b=$('kinds');const n={};for(const o of M.objects)n[o.kind]=(n[o.kind]||0)+1;
+  for(const k of Object.keys(KIND).filter(k=>n[k])){
+    const d=document.createElement('button');d.className='kind';d.appendChild(icon(g=>symbol(k,'',g),16));
+    const s=document.createElement('span');s.textContent=KIND[k];d.appendChild(s);const c=document.createElement('small');c.textContent=n[k];d.appendChild(c);
+    d.onclick=()=>{kindOn=kindOn===k?null:k;highlight();for(const x of b.children)x.classList.toggle('on',x===d&&kindOn===k);if(kindOn)fitTo(M.objects.filter(o=>o.kind===k))};
+    b.appendChild(d)}
+}
+function buildLegend(){
+  const b=$('legbody');
+  const item=(draw,text)=>{const d=document.createElement('div');d.className='li';d.appendChild(icon(draw));const s=document.createElement('span');s.textContent=text;d.appendChild(s);b.appendChild(d)};
+  const p=document.createElement('div');p.className='note';p.style.margin='4px 0';p.textContent=t('Форма значка показывает тип объекта, цвет заливки: его настоящий цвет. Пунктирное кольцо: объект на крыше. Наведите мышь на значок, чтобы узнать подробности.','The shape of a symbol is the kind of object, its fill is the real colour. A dashed ring: the object is on a roof. Hover over a symbol for details.');b.appendChild(p);
+  item(g=>{el('circle',{r:1,fill:'#fff',stroke:'#1d2330','stroke-width':.25},g);el('circle',{r:.35,fill:'#1d2330'},g)},t('старт и дом дрона','the drone\'s start and home'));
+  item(g=>ptMark(g,1,.13),t('ваша примерная точка (в 3D: бирюзовый столб)','your rough point (in 3D: a teal pillar)'));
+  item(g=>{el('path',{d:'M-1.1,0H1.1',stroke:'#2f6fed','stroke-width':.3},g)},t('путь дрона','the drone\'s path'));
+  item(g=>{el('path',{d:'M-1.1,0H1.1',stroke:'#2f6fed','stroke-width':.22,'stroke-dasharray':'.3 .25'},g)},t('где дрон считает себя','where the drone thinks it is'));
+  item(g=>{el('rect',{x:-1,y:-.8,width:2,height:1.6,fill:'#b9bcc4',stroke:'#8d919b','stroke-width':.1},g)},t('дом (наведите мышь: высота)','building (hover: height)'));
+  item(g=>{el('circle',{r:.4,fill:'#7aa86b'},g)},t('дерево','tree'));
+  item(g=>{el('rect',{x:-1,y:-.8,width:2,height:1.6,fill:'#9cc3e6'},g)},t('вода','water'));
+}
+function ptMark(g,n,k){k=k||1;el('circle',{r:7*k,fill:'none',stroke:'#0b7285','stroke-width':1.6*k,'stroke-dasharray':`${2.5*k} ${1.8*k}`},g);el('path',{d:`M${-4*k},0H${4*k}M0,${-4*k}V${4*k}`,stroke:'#0b7285','stroke-width':1.3*k},g);
+  if(k===1){el('rect',{x:6,y:-16,width:11,height:11,rx:2,fill:'#0b7285'},g);el('text',{x:11.5,y:-7.6,'font-size':9,'font-weight':700,'text-anchor':'middle',fill:'#fff'},g).textContent=String(n)}}
+function highlight(){
+  const ids=new Set(exTargets);
+  for(const g of document.querySelectorAll('#objs .obj')){
+    const on=(kindOn&&g.dataset.kind===kindOn)||ids.has(g.dataset.id);
+    g.style.opacity=(kindOn||ids.size)&&!on?.25:1;
+    g.querySelectorAll('.halo').forEach(x=>x.remove());
+    if(on)el('circle',{class:'halo',r:2.1,fill:'none',stroke:'#1d2330','stroke-width':.18},g);
+  }
+}
+function fitTo(objs){if(!objs.length)return;const xs=objs.map(o=>o.x),ys=objs.map(o=>-o.y);const pad=60;
+  const x0=Math.min(...xs)-pad,x1=Math.max(...xs)+pad,y0=Math.min(...ys)-pad,y1=Math.max(...ys)+pad,s=Math.max(x1-x0,y1-y0);vb=[(x0+x1)/2-s/2,(y0+y1)/2-s/2,s,s];setVB()}
+function zoom(k){const cx=vb[0]+vb[2]/2,cy=vb[1]+vb[3]/2;vb=[cx-vb[2]*k/2,cy-vb[3]*k/2,vb[2]*k,vb[3]*k];setVB()}
+$('fit').onclick=()=>{const h=M.half;vb=[-h,-h,2*h,2*h];setVB()};
+$('zin').onclick=()=>zoom(1/1.4);$('zout').onclick=()=>zoom(1.4);
+
+// map: click = a rough point (only while planning), drag = move, wheel = zoom
+function svgPt(e){const s=$('map');const p=s.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(s.getScreenCTM().inverse())}
+let drag=null;
+$('map').addEventListener('mousedown',e=>{drag={x:e.clientX,y:e.clientY,vb:[...vb],moved:false}});
+window.addEventListener('mousemove',e=>{if(!drag)return;const s=$('map').getBoundingClientRect();const k=Math.max(vb[2]/s.width,vb[3]/s.height);if(Math.abs(e.clientX-drag.x)+Math.abs(e.clientY-drag.y)>4){drag.moved=true;if(mode==='fly')$('follow').checked=false}vb[0]=drag.vb[0]-(e.clientX-drag.x)*k;vb[1]=drag.vb[1]-(e.clientY-drag.y)*k;setVB()});
+window.addEventListener('mouseup',e=>{if(drag&&!drag.moved&&mode==='plan'&&e.target.closest&&e.target.closest('#map')){const p=svgPt(e);pts.push([p.x,-p.y]);drawPts()}drag=null});
+$('map').addEventListener('wheel',e=>{e.preventDefault();const p=svgPt(e);const k=e.deltaY>0?1.15:1/1.15;vb=[p.x-(p.x-vb[0])*k,p.y-(p.y-vb[1])*k,vb[2]*k,vb[3]*k];setVB()},{passive:false});
+function drawPts(){const g=$('dyn');g.querySelectorAll('.pt').forEach(x=>x.remove());pts.forEach((p,i)=>{const c=el('g',{class:'pt',transform:`translate(${p[0]},${-p[1]})`},g);ptMark(c,i+1)});
+  $('ptinfo').textContent=pts.length?(pts.length===1?t('Поставлена 1 точка','1 point set'):t(`Поставлено точек: ${pts.length}`,`${pts.length} points set`)):t('Точек нет','No points');
+  $('sum1').textContent=pts.length?t(`точек: ${pts.length}`,`points: ${pts.length}`):t('щёлкните на карте рядом с целью','click on the map near the target');stepMarks();checkPoints()}
+$('undo').onclick=()=>{pts.pop();drawPts()};
+$('clr').onclick=()=>{pts=[];drawPts()};
+
+// the three steps
+function openStep(id){for(const s of document.querySelectorAll('.step'))s.classList.toggle('open',s.id===id);stepMarks()}
+for(const b of document.querySelectorAll('[data-open]'))b.addEventListener('click',()=>openStep(b.dataset.open));
+function stepMarks(){$('s1').classList.toggle('done',pts.length>0);$('s2').classList.toggle('done',!!$('text').value.trim());$('s3').classList.add('done')}
+
+// examples written for this map
+async function loadExamples(){$('exlist').innerHTML=`<span class="note">${t('составляю примеры…','writing examples…')}</span>`;
+  try{const ex=await (await fetch('/api/examples?lang='+LANG)).json();$('exlist').innerHTML='';
+    if(!ex.length){$('exlist').innerHTML=`<span class="note">${t('на этой карте не удалось составить пример','no example could be written for this map')}</span>`;return}
+    for(const x of ex.slice(0,4)){const b=document.createElement('button');b.className='ex';b.innerHTML=`<span class="tag">${esc(x.tag)}</span>${esc(x.text)}`;
+      b.onclick=()=>{$('text').value=x.text;onText();$('exbox').open=false;pts=x.points.map(p=>[p[0],p[1]]);drawPts();exTargets=[];window._exT=x.targets;$('showtgt').disabled=false;highlight();setMsg(t('Пример выбран, точки поставлены за вас. Цель можно найти по описанию самим или нажать «показать цель примера».','Example chosen; the points are set for you. Find the target from the description yourself or press "show the example target".'))};
+      $('exlist').appendChild(b)}}
+  catch(e){$('exlist').innerHTML=`<span class="note err">${t('примеры не загрузились','the examples did not load')}</span>`}}
+$('exmore').onclick=loadExamples;
+$('showtgt').onclick=()=>{exTargets=window._exT||[];highlight();fitTo(M.objects.filter(o=>exTargets.includes(o.id)))};
+
+// conditions: a ready set or by hand
+const IDS=['wind','gust','fog','gps','gpst','lidar','lidart','compass','link','linkt','battery','cold','att','ret'];
+function setField(id,v){const e=$(id);if(e.type==='checkbox')e.checked=!!v;else e.value=v}
+function buildPresets(){const b=$('presets');for(const p of PRESETS){const x=document.createElement('button');x.className='preset';x.dataset.preset=p.id;x.innerHTML=`<b>${esc(p.name)}</b><span>${esc(p.about)}</span>`;
+  x.onclick=()=>applyPreset(p.id);b.appendChild(x)}applyPreset('calm')}
+function applyPreset(id){const p=PRESETS.find(q=>q.id===id);for(const k of IDS)setField(k,k in p.set?p.set[k]:DEF[k]);
+  for(const x of $('presets').children)x.classList.toggle('on',x.dataset.preset===id);condSummary(p.name)}
+function condSummary(name){const c=[];const w=+$('wind').value;if(w>0)c.push(t(`ветер ${w} м/с`,`wind ${w} m/s`));if($('fog').value!=='none')c.push($('fog').value==='dense'?t('густой туман','dense fog'):t('лёгкий туман','light fog'));
+  if($('gps').value!=='ok')c.push('GPS '+$('gps').selectedOptions[0].text+t(' через ',' after ')+$('gpst').value+t(' с',' s'));if($('lidar').value!=='ok')c.push(t('лидар: ','lidar: ')+$('lidar').selectedOptions[0].text);
+  if($('compass').value)c.push(t('компас врёт','compass off'));if($('link').value==='lost')c.push(t('связь пропадёт через ','link lost after ')+$('linkt').value+t(' с',' s'));if(+$('battery').value<100)c.push(t('заряд ','charge ')+$('battery').value+' %');
+  if($('cold').checked)c.push(t('холодная батарея','cold battery'));if($('att').checked)c.push(t('атаки птиц','bird attacks'));
+  $('sum3').textContent=(name?name+': ':'')+(c.length?c.join(', '):t('всё исправно','all fine'))}
+for(const id of IDS)$(id).addEventListener('change',()=>{for(const x of $('presets').children)x.classList.remove('on');condSummary(t('свои условия','own conditions'))});
+
+// parse, check, fly
+function setMsg(html,cls){$('msg').innerHTML=html?`<span class="${cls||''}">${html}</span>`:''}
+function clearParse(){$('pv').style.display='none';$('pj').value='';parsedOk=false}
+function checkPoints(){let n=0;try{n=parsedOk?(JSON.parse($('pj').value||'{}').steps||[]).length:0}catch(e){}if(n&&pts.length<n)setMsg(t(`В задании шагов: ${n}, а точек: ${pts.length}. Поставьте точку для каждого шага, иначе дрон будет искать вокруг последней точки.`,`The mission has ${n} steps but ${pts.length} points. Put a point for every step, or the drone will search around the last point.`),'err')}
+function onText(){clearParse();const tx=$('text').value.trim();$('sum2').textContent=tx?(EN?'"'+tx+'"':'«'+tx+'»'):t('напишите задание','write the request');stepMarks()}
+$('text').oninput=onText;
+$('prs').onclick=async()=>{if(!$('text').value.trim()){setMsg(t('Сначала напишите задание.','Write the request first.'),'err');return}
+  $('prs').disabled=true;$('prs').textContent=t('разбираю…','parsing…');
+  try{const r=await (await fetch('/api/parse',{method:'POST',body:JSON.stringify({text:$('text').value,lang:LANG})})).json();
+    if(r.error){setMsg(esc(r.error),'err');return}
+    setMsg('');$('pv').style.display='block';$('pvs').innerHTML=r.summary.map(x=>'<li>'+esc(x)+'</li>').join('');$('pj').value=JSON.stringify(r.parsed,null,1);parsedOk=true;checkPoints()}
+  catch(e){setMsg(t('сервер не ответил','the server did not answer'),'err')}
+  finally{$('prs').disabled=false;$('prs').textContent=t('Проверить, как понял дрон','Check what the drone understood')}};
+function request(){let parsed=null;if(parsedOk&&$('pj').value.trim()){parsed=JSON.parse($('pj').value)}const ret=$('ret').value;
+  return {lang:LANG,text:$('text').value,parsed,points:pts,return:ret===''?null:ret==='1',wind:+$('wind').value,gust:$('gust').value,fog:$('fog').value,
+    gps:$('gps').value,gps_t:+$('gpst').value,lidar:$('lidar').value,lidar_t:+$('lidart').value,compass:!!$('compass').value,
+    link_t:$('link').value==='lost'?+$('linkt').value:null,battery:+$('battery').value,cold:$('cold').checked,attacks:$('att').checked}}
+$('go').onclick=async()=>{if(!pts.length){setMsg(t('Сначала щёлкните на карте рядом с целью.','First click on the map near the target.'),'err');openStep('s1');return}
+  if(!$('text').value.trim()){setMsg(t('Сначала напишите, что сделать.','First write what to do.'),'err');openStep('s2');return}
+  let req;try{req=request()}catch(e){setMsg(t('В JSON разбора ошибка: ','Error in the parse JSON: ')+esc(e.message),'err');openStep('s2');return}
+  $('go').disabled=true;setMsg(req.parsed?t('запускаю…','starting…'):t('разбираю задание и запускаю…','parsing and starting…'));
+  try{const r=await (await fetch('/api/mission',{method:'POST',body:JSON.stringify(req)})).json();
+    if(r.error){setMsg(esc(r.error),'err');$('go').disabled=false;return}
+    lastReq=req;setMsg('');startFly();sendSpeed()}
+  catch(e){setMsg(t('сервер не ответил','the server did not answer'),'err');$('go').disabled=false}};
+
+function resetFlight(){$('cam').style.display='none';$('camnone').style.display='block';camSeq=-1;trailN=0;lastTrail=null;trTrue.setAttribute('points','');trEst.setAttribute('points','');drone.style.display='none';lastEv='';seen={};
+  $('events').innerHTML=`<span class="note">${t('пока ничего','nothing yet')}</span>`;$('log').textContent='';done=false;$('result').style.display='none'}
+function startFly(){resetFlight();mode='fly';$('app').className='fly';$('stop').style.display='inline-block';$('follow').checked=true;vb=[vb[0],vb[1],Math.min(vb[2],220),Math.min(vb[3],220)];setVB()}
+function toPlan(keep){setText('realspeed','');mode='plan';$('app').className='plan';$('stop').style.display='none';$('result').style.display='none';$('go').disabled=false;
+  if(!keep){pts=[];drawPts();$('text').value='';onText();exTargets=[];highlight();applyPreset('calm');openStep('s1')}else openStep('s3');
+  $('fit').click();setMsg(keep?t('Задание и условия те же, можно лететь снова.','Same mission and conditions; you can fly again.'):'')}
+$('newtask').onclick=()=>toPlan(false);
+$('again').onclick=()=>toPlan(true);
+$('stop').onclick=()=>fetch('/api/stop',{method:'POST',body:'{}'});
+$('swap').onclick=()=>{const big=$('app').classList.toggle('mapbig');$('swap').textContent=big?t('3D крупно','Large 3D'):t('Карта крупно','Large map')};
+function sendSpeed(){const b=$('speedseg').querySelector('.on');fetch('/api/speed',{method:'POST',body:JSON.stringify({speed:+(b?b.dataset.s:1)})})}
+$('speedseg').onclick=e=>{const s=e.target.dataset.s;if(!s)return;for(const b of $('speedseg').children)b.classList.toggle('on',b===e.target);sendSpeed()};
+
+// the 3D view: frames rendered by the simulator, fetched one at a time and only while visible
+let view={mode:'chase',azimuth:135,elevation:-25,distance:30},v3drag=null,viewT=0,frameSeq=-1,frameT=0,camSeq=-1,camT=0,blob3d=null,blobCam=null,busy3d=false,busyCam=false,stateFrame=0,stateCam=0;
+async function frameLoop(){
+  const vis=mode==='fly'&&!document.hidden;
+  if(vis&&!busy3d&&(stateFrame!==frameSeq||Date.now()-frameT>1000)){busy3d=true;frameT=Date.now();
+    try{const r=await fetch('/api/frame');if(r.status===200){const b=await r.blob();const u=URL.createObjectURL(b);$('v3d').src=u;if(blob3d)URL.revokeObjectURL(blob3d);blob3d=u;frameSeq=stateFrame;$('v3msg').style.display='none'}}catch(e){}
+    busy3d=false}
+  const camVis=vis&&$('camcard').open;
+  if(camVis&&!busyCam&&stateCam!==camSeq&&Date.now()-camT>400){busyCam=true;camT=Date.now();
+    try{const r=await fetch('/api/cam');if(r.status===200){const b=await r.blob();const u=URL.createObjectURL(b);$('cam').src=u;$('cam').style.display='block';$('camnone').style.display='none';if(blobCam)URL.revokeObjectURL(blobCam);blobCam=u;camSeq=stateCam}}catch(e){}
+    busyCam=false}
+  setTimeout(frameLoop,vis?70:400)}
+async function sendView(x){try{const r=await (await fetch('/api/view',{method:'POST',body:JSON.stringify(x)})).json();if(r.view)view=Object.assign(view,r.view)}catch(e){}
+  for(const b of $('modes').querySelectorAll('button'))b.classList.toggle('on',b.dataset.m===view.mode)}
+$('modes').onclick=e=>{if(e.target.dataset.m)sendView({mode:e.target.dataset.m})};
+$('v3d').addEventListener('mousedown',e=>{v3drag={x:e.clientX,y:e.clientY,az:view.azimuth,el:view.elevation};$('v3d').classList.add('drag');if(view.mode!=='free')sendView({mode:'free',azimuth:view.azimuth,elevation:view.mode==='top'?-60:view.elevation});e.preventDefault()});
+window.addEventListener('mousemove',e=>{if(!v3drag)return;view.azimuth=v3drag.az-(e.clientX-v3drag.x)*.35;view.elevation=Math.max(-89,Math.min(-3,v3drag.el-(e.clientY-v3drag.y)*.25));
+  if(Date.now()-viewT>80){viewT=Date.now();sendView({mode:'free',azimuth:view.azimuth,elevation:view.elevation})}});
+window.addEventListener('mouseup',()=>{if(v3drag){v3drag=null;$('v3d').classList.remove('drag');sendView({azimuth:view.azimuth,elevation:view.elevation})}});
+$('v3d').addEventListener('wheel',e=>{e.preventDefault();view.distance=Math.max(6,Math.min(250,view.distance*(e.deltaY>0?1.12:1/1.12)));sendView({distance:view.distance})},{passive:false});
+
+// what the drone does, in plain Russian (the brain writes its notes in English)
+const TR=[[/^-> (\w+)/,m=>'этап: '+(PHASE[m[1]]||m[1])],[/^after a closer look: top ([\d.]+)/,m=>'посмотрел ближе: лучший кандидат подходит на '+Math.round(m[1]*100)+' %'],
+  [/^cannot act on (\d+) step/,m=>'не может выполнить шагов: '+m[1]+', пропускает'],[/^cargo released \(([\d.]+) m/,m=>'груз сброшен, '+m[1]+' м с наветренной стороны от центра'],
+  [/^close check: it matches the description and nothing/,()=>'проверка вблизи: это цель, похожих рядом нет'],[/^close check: it matches, but/,()=>'проверка вблизи: подходит, но рядом есть похожие'],
+  [/^close check: not seen from above/,()=>'проверка вблизи: сверху не видно, смотрю ниже'],[/^close check: still not seen/,()=>'проверка вблизи: так и не видно, не трогаю, ищу дальше'],
+  [/^close check: taking too long/,()=>'проверка вблизи затянулась, не трогаю'],[/^close check: this one does not match/,()=>'проверка вблизи: это двойник, ищу дальше'],
+  [/^could not get out of the hangar/,()=>'не смог вылететь из ангара, остаюсь внутри'],[/^could not get through the door/,()=>'не прошёл в ворота, отхожу'],
+  [/^could not latch the parcel/,()=>'не смог зацепить посылку'],[/^could not reach the close-look point/,()=>'не долетел до точки осмотра, смотрю отсюда'],
+  [/^drop zone centred/,()=>'зона сброса прямо подо мной'],[/^drop zone is not clear/,()=>'на зоне сброса что-то есть, жду'],
+  [/^flyby: no clear line at (\d+) m, passing at (\d+) m/,m=>`пролёт: на ${m[1]} м мешают, иду на ${m[2]} м`],[/^lidar: something ahead/,()=>'лидар видит впереди то, чего нет на карте, набираю высоту'],
+  [/^lowering the hook/,()=>'опускаю крюк'],[/^no operator: taking the best candidate/,()=>'вас не спросить, беру лучшего кандидата'],[/^no progress: routing (\d+) m higher/,m=>`не продвигаюсь, иду на ${m[1]} м выше`],
+  [/^open door found/,()=>'найдены открытые ворота'],[/^operator chose candidate (\d+)/,m=>'вы выбрали кандидата '+m[1]],[/^operator: none of these/,()=>'вы ответили: ни один'],
+  [/^orbit complete/,()=>'облёт закончен'],[/^orbit: roofs on the circle/,()=>'на круге облёта крыши, лечу выше'],[/^out of the hangar/,()=>'вылетел из ангара'],
+  [/^parcel latched/,()=>'посылка на крюке'],[/^pass complete/,()=>'пролёт закончен'],[/^safety: avoiding/,()=>'ядро чувств: уход от столкновения'],
+  [/^safety: dodging/,()=>'ядро чувств: уклоняюсь от движущейся угрозы'],[/^touchdown/,()=>'касание: сел'],[/^transit is taking too long/,()=>'перелёт затянулся, ищу отсюда'],
+  [/^(feeling: not enough energy|telemetry: battery low) -> going home/,()=>'заряда мало: отказываюсь от оставшихся шагов и возвращаюсь домой'],
+  [/^(feeling: I am lost|telemetry: position uncertain)/,()=>'не уверен, где я: снижаюсь, чтобы увидеть землю и стены'],
+  [/asking the operator$/,()=>'спрашиваю вас, какой объект имелся в виду']];
+function events(log){const out=[];for(const line of log){const m=line.match(/^\[\s*([\d.]+) (?:с|s)\] (.*)$/);if(!m)continue;const t=m[1],msg=m[2];let ru=null;
+    if(/^(условие|вопрос оператору|миссия завершена|3D-вид|condition|question to the operator|mission over)/.test(msg))ru=msg.replace(/^миссия завершена: .*/,'полёт закончен').replace(/^mission over: .*/,'flight over');
+    else if(EN){const k=msg.match(/^-> (\w+)/);if(k)ru='phase: '+(PHASE[k[1]]||k[1]);else if(!/^(mission|parse|perception|parser|WARNING)/.test(msg)&&!/[А-Яа-яЁё]/.test(msg))ru=msg}
+    else for(const [re,f] of TR){const k=msg.match(re);if(k){ru=f(k);break}}
+    if(ru&&!(out.length&&out[out.length-1][1]===ru))out.push([t,ru])}
+  return out.slice(-30)}
+function bar(name,tip,v){return `<span class="nm" title="${esc(tip)}">${esc(name)}</span><div class="bar${v>.5?' hot':''}"><i style="width:${Math.round(v*100)}%"></i></div><span class="v">${Math.round(v*100)} %</span>`}
+
+async function poll(){
+  let s=null;
+  try{const ctl=new AbortController();const tm=setTimeout(()=>ctl.abort(),3000);s=await (await fetch('/api/state?log='+logN,{signal:ctl.signal})).json();clearTimeout(tm)}catch(e){}
+  if(s){try{render(s)}catch(e){console.error(e)}}
+  setTimeout(poll,mode==='fly'?250:900)}
+function render(s){
+  const ph=s.phase||'idle';
+  setText('phase',PHASE[ph]||ph);$('phase').className=ph==='done'?'done':(ph==='idle'?'':'fly');
+  if(mode==='plan'&&ph!=='idle'&&ph!=='done'){startFly()}  // the page was reloaded during a flight
+  stateFrame=s.frame_seq;stateCam=s.cam_seq;
+  if(s.log&&s.log.length){logs=logs.concat(s.log).slice(-1500)}logN=s.log_n||logN;
+  if(mode!=='fly')return;
+  if(s.speed_real!=null&&ph!=='done'){const want=+($('speedseg').querySelector('.on')||{dataset:{s:1}}).dataset.s;const slow=s.speed_real<0.8*want;
+    setText('realspeed',t('сейчас ×'+s.speed_real.toFixed(1).replace('.',',')+(slow?' (быстрее компьютер не успевает)':''),'now ×'+s.speed_real.toFixed(1)+(slow?' (the computer cannot go faster)':'')));$('realspeed').classList.toggle('slow',slow)}
+  setText('nowphase',PHASE[ph]||ph);setText('nowtext',s.text?(EN?'"'+s.text+'"':'«'+s.text+'»'):'');
+  setText('conds',(s.conditions||[]).length?t('Условия: ','Conditions: ')+s.conditions.join(', '):'');
+  setText('t_alt',s.alt!=null?s.alt.toFixed(0)+t(' м',' m'):'—');setText('t_spd',s.speed!=null?s.speed.toFixed(1)+t(' м/с',' m/s'):'—');
+  setText('t_bat',s.battery!=null?Math.round(s.battery)+' %':'—');$('t_batc').classList.toggle('bad',s.battery!=null&&s.battery<25);
+  const gtxt=s.gps?((EN?{ok:'ok',off:'none',drift:'spoofed',degraded:'degraded'}:{ok:'есть',off:'нет',drift:'подмена',degraded:'неточный'})[s.gps]||s.gps):'—';setText('t_gps',gtxt);$('t_gpsc').classList.toggle('bad',!!s.gps&&s.gps!=='ok');
+  const f=s.feel||{};
+  if(Object.keys(f).length){setHTML('feel',FG.map(([n,ks,tip])=>bar(n,tip,Math.max(...ks.map(k=>f[k]||0)))).join(''));
+    if($('feelall').offsetParent)setHTML('feelall',Object.entries(f).map(([k,v])=>bar((FEEL[k]||[k])[0],(FEEL[k]||['',''])[1],v)).join(''));
+    setText('fires',t(`Ядро перехватило команду мозга ${s.fires||0} раз`,`The core overrode the brain's command ${s.fires||0} times`))}
+  if(s.log&&s.log.length){const ev=events(logs);const h=ev.map(([tm,x])=>`<div><b>${tm} ${t('с','s')}</b>${esc(x)}</div>`).join('');if(ev.length&&h!==lastEv){lastEv=h;$('events').innerHTML=h;$('events').scrollTop=1e9}
+    const lg=$('log');if(lg.offsetParent){lg.textContent=logs.join('\n');lg.scrollTop=1e9}}
+  if(s.true){
+    if(!lastTrail||Math.hypot(s.true[0]-lastTrail[0],s.true[1]-lastTrail[1])>1){lastTrail=s.true;trailN++;
+      if(trailN>4000){trTrue.setAttribute('points','');trEst.setAttribute('points','');trailN=0}
+      trTrue.setAttribute('points',(trTrue.getAttribute('points')||'')+' '+P(s.true));trEst.setAttribute('points',(trEst.getAttribute('points')||'')+' '+P(s.est))}
+    drone.style.display='';drone.setAttribute('transform',`translate(${s.true[0]},${-s.true[1]}) rotate(${(-(s.yaw||0)*180/Math.PI).toFixed(1)})`);
+    if($('follow').checked){vb[0]=s.true[0]-vb[2]/2;vb[1]=-s.true[1]-vb[3]/2;setVB()}}
+  if(s.question){const key=JSON.stringify(s.question.cands.map(c=>c.x));if(key!==lastQ){lastQ=key;$('qtext').textContent=s.question.text;
+    $('qc').innerHTML=s.question.cands.map((c,i)=>`<div><img src="data:image/jpeg;base64,${c.img}" onclick="answer(${i})"><br>${t('кандидат','candidate')} ${i+1}, ${t('дрон уверен на','drone confidence')} ${Math.round(c.p*100)} %</div>`).join('');$('q').style.display='flex'}}
+  else{$('q').style.display='none';lastQ=null}
+  if(s.result&&ph==='done'&&!done){done=true;$('resl').innerHTML=(s.result.outcome||[]).map(x=>'<li>'+esc(x)+'</li>').join('');$('result').style.display='flex';$('stop').style.display='none';setText('realspeed','')}
+}
+function answer(i){fetch('/api/answer',{method:'POST',body:JSON.stringify({choice:i})});$('q').style.display='none'}
+$('none').onclick=()=>answer(-1);
+$('langseg').onclick=e=>{const l=e.target.dataset.l;if(l&&l!==LANG&&mode==='plan'){const u=new URL(location.href);u.searchParams.set('lang',l);location.href=u.toString()}};
+init();
+</script></body></html>

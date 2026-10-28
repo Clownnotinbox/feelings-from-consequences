@@ -1,0 +1,16 @@
+# Drone app (stage F/G demo) and the real-drone bridge. Python 3.11. Torch with CUDA: installed separately by install_app.bat.
+mujoco==3.17.0
+numpy==2.4.6
+scipy==1.17.1
+shapely==2.2.0
+mapbox_earcut==2.1.0
+pillow==13.0.0
+open3d==0.20.0
+scikit-learn==1.9.1
+ultralytics==8.4.189
+transformers==4.57.6
+peft==0.21.2
+accelerate==1.15.0
+huggingface_hub==0.36.2
+opencv-python==5.0.0.93
+pymavlink
