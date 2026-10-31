@@ -1,4 +1,4 @@
-"""Stage D3 analysis (FEELINGS_DESIGN_RU.md 12.6, H13-H16).
+"""Stage D3 analysis (plan A–E 12.6, H13-H16).
 usage: analyze_d3.py RUN_DIR (with stageD3/, stageD3_feelings_core4_s1_gru.json, read7b.json, LLM_D3_s*.json)
 """
 

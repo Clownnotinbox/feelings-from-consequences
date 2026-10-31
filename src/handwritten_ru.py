@@ -1,4 +1,4 @@
-"""Stage F, check F3 (MISSIONS_DESIGN_RU.md sec."""
+"""Stage F, check F3 (plan F–G sec."""
 
 
 def T(kind, **a):

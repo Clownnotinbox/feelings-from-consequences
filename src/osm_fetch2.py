@@ -1,4 +1,4 @@
-"""Stage F (MISSIONS_DESIGN_RU.md sec.
+"""Stage F (plan F–G sec.
 usage: osm_fetch2.py OUT_DIR [name ...]"""
 
 import json, math, sys, time, urllib.parse, urllib.request

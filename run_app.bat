@@ -5,7 +5,7 @@ rem Another place: run_app.bat --place tokyo_res    The same layout again: run_a
 chcp 65001 >nul
 cd /d "%~dp0src"
 set PYTHONIOENCODING=utf-8
-if exist "%~dp0osm2" (set OSM2_DIR=%~dp0osm2) else (set OSM2_DIR=%~dp0..\..\work\datasets\osm2)
-if exist "%~dp0.venv\Scripts\python.exe" (set PY=%~dp0.venv\Scripts\python.exe) else (set PY=%~dp0..\..\work\drone-venv\Scripts\python.exe)
+set OSM2_DIR=%~dp0osm2
+if exist "%~dp0.venv\Scripts\python.exe" (set PY=%~dp0.venv\Scripts\python.exe) else (set PY=python)
 "%PY%" demo_server.py --place kazan_novosav %*
 pause

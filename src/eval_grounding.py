@@ -1,4 +1,4 @@
-"""Stage F, check F2 (MISSIONS_DESIGN_RU.md sec.
+"""Stage F, check F2 (plan F–G sec.
 usage: eval_grounding.py DET.pt ATTRS.pt PARSER_ADAPTER BASE_MODEL OUT.json [N_PER_PLACE] [SEED0]"""
 
 import json, math, sys, time, zlib

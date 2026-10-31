@@ -1,4 +1,4 @@
-"""Stage G (MISSIONS_DESIGN_RU.md 6.6).
+"""Stage G (plan F–G 6.6).
 usage: analyze_g.py DIR -> prints + DIR/G_ANALYSIS.json"""
 
 import collections, json, sys

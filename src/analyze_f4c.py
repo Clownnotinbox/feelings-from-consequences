@@ -1,4 +1,4 @@
-"""F4c (MISSIONS_DESIGN_RU.md 6.4, post-hoc).
+"""F4c (plan F–G 6.4, post-hoc).
 usage: analyze_f4c.py DIR  (f4_full, f4b_full, f4c_operator, f4c_full, f4d_full .jsonl; F4d = MISSIONS_DESIGN 6.5) -> prints + DIR/F4C_ANALYSIS.json
 """
 

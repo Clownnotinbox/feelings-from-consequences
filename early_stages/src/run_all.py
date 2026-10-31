@@ -1,4 +1,4 @@
-"""Run the E2/E3 matrix sequentially (one GPU), skipping finished runs; then summarise."""
+"""Run the E2/E3 matrix sequentially (one GPU), skipping finished runs."""
 
 import argparse, json, subprocess, sys, time
 from pathlib import Path
@@ -50,7 +50,6 @@ def main(a):
         with open(root / f"{exp}-{arm}-s{seed}.log", "w", encoding="utf-8") as log:
             rc = subprocess.call(cmd, stdout=log, stderr=subprocess.STDOUT, cwd=HERE)
         print("DONE", exp, arm, seed, "rc", rc, round(time.time() - t), "s", flush=True)
-    subprocess.call([sys.executable, str(HERE / "summarize.py"), str(root)])
 
 
 if __name__ == "__main__":

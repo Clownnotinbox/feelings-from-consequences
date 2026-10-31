@@ -1,4 +1,4 @@
-"""Stage E, step 1 (FEELINGS_DESIGN_RU.md sec.
+"""Stage E, step 1 (plan A–E sec.
 usage: stage_e_vlm.py --data DIR --model PATH --out OUT.json [--conds point|familiar,...] [--bs 8] [--limit N]
        stage_e_vlm.py --data DIR --embed PATH --out OUT.json"""
 

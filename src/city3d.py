@@ -11,7 +11,7 @@ import textures as TX
 import world as W0
 from osm_fetch2 import AREAS, HALF
 
-OSM2 = Path(os.environ.get("OSM2_DIR", Path(__file__).resolve().parents[3] / "work" / "datasets" / "osm2"))
+OSM2 = Path(os.environ.get("OSM2_DIR", Path(__file__).resolve().parents[1] / "osm2"))
 TILE = 100.0
 HOUSE = {
     "house",

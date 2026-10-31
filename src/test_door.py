@@ -1,4 +1,4 @@
-"""Stage G1a (MISSIONS_DESIGN_RU.md 6.6).
+"""Stage G1a (plan F–G 6.6).
 usage: test_door.py OUT.json N"""
 
 import json, math, sys, zlib

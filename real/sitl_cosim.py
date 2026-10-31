@@ -1,4 +1,4 @@
-"""Check G5 (REAL_DRONE_RU.md sec.
+"""Check G5 (docs/REAL_DRONE.md sec.
 usage: sitl_cosim.py OUT.jsonl K0 K1 INSTANCE   (missions k = K0..K1-1 of the training places; PX4 instance I listens on 14540+I)
 """
 

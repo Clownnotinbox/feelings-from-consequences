@@ -117,6 +117,6 @@ def main(a):
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("--esconv", default="../../../work/datasets/esconv/ESConv.json")
+    p.add_argument("--esconv", default="../data/esconv/ESConv.json")
     p.add_argument("--out", default="../analysis/audit_r2.json")
     main(p.parse_args())

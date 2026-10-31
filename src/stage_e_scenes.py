@@ -1,4 +1,4 @@
-"""Stage E, step 1 (FEELINGS_DESIGN_RU.md sec.
+"""Stage E, step 1 (plan A–E sec.
 usage: stage_e_scenes.py N WORKERS OUT_DIR [START]"""
 
 import json, math, sys, time, zlib

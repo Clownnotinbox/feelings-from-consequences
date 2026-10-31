@@ -9,3 +9,5 @@ MUJOCO_LOG.TXT
 *.out
 *.bbl
 *.blg
+early_stages/data/
+asks/

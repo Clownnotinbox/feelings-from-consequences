@@ -15,7 +15,7 @@ PLACES = {  # name: (file, lat, lon, half-size m, place type from the map)
     "malakhovka_line": ("malakhovka_line.json", 55.65663, 37.97119, 200, "power_line_suburb"),
     "akadem_line": ("akadem_line.json", 54.87604, 83.11282, 200, "power_line_forest"),
 }
-OSM_DIR = Path(os.environ.get("OSM_DIR", Path(__file__).resolve().parents[3] / "work" / "datasets" / "osm"))
+OSM_DIR = Path(os.environ.get("OSM_DIR", Path(__file__).resolve().parents[1] / "osm"))
 FACADES = [
     ".78 .72 .62 1",
     ".70 .52 .42 1",

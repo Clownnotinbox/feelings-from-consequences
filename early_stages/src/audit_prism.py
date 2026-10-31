@@ -92,6 +92,6 @@ def main(a):
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("--conversations", default="../../../work/datasets/prism/conversations.jsonl")
+    p.add_argument("--conversations", default="../data/prism/conversations.jsonl")
     p.add_argument("--out", default="../analysis/audit_prism.json")
     main(p.parse_args())
